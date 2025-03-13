@@ -1,7 +1,10 @@
-﻿namespace Interfaces
+﻿using System.Threading;
+using System.Threading.Tasks;
+
+namespace Interfaces
 {
     public interface IRhinoGrasshopperServices
     {
-        bool RunScript(System.Threading.CancellationToken ct);
+        Task<bool> RunScriptAsync(CancellationToken ct);
     }
 }

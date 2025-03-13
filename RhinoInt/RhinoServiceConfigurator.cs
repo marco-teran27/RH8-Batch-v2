@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Interfaces;
-using RhinoInt;
-using Config.Interfaces; // Ensure this is included if needed elsewhere
 
 namespace RhinoInt
 {
@@ -10,10 +8,10 @@ namespace RhinoInt
         public static IServiceCollection ConfigureRhinoServices(IServiceCollection services)
         {
             services.AddTransient<IRhinoCommOut, RhinoCommOut>();
-            services.AddTransient<IRhinoBatchServices>(provider =>
-                new RhinoBatchServices(provider.GetService<IRhinoCommOut>()));
-            services.AddTransient<IRhinoPythonServices, RhinoPythonServices>(); // No parameters needed
-            services.AddTransient<IRhinoGrasshopperServices, RhinoGrasshopperServices>(); // Added for Grasshopper
+            services.AddTransient<IRhinoUIThreadInvoker, RhinoUIThreadInvoker>();
+            services.AddTransient<IRhinoBatchServices, RhinoBatchServices>();
+            services.AddTransient<IRhinoPythonServices, RhinoPythonServices>();
+            services.AddTransient<IRhinoGrasshopperServices, RhinoGrasshopperServices>();
             return services;
         }
     }

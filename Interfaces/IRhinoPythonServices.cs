@@ -1,9 +1,10 @@
 ﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace Interfaces
 {
     public interface IRhinoPythonServices
     {
-        bool RunScript(CancellationToken ct);
+        Task<bool> RunScriptAsync(CancellationToken ct);
     }
 }

@@ -33,13 +33,13 @@ namespace Core.Batch
 
         public async Task RunBatchAsync(CancellationToken ct)
         {
-            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.RunBatchAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 var files = RhinoFileNameList.Instance.GetMatchedFiles();
                 if (!files.Any())
                 {
-                    _rhinoCommOut.ShowError("No matched files found");
+                    _rhinoCommOut?.ShowError("No matched files found");
                     return;
                 }
 
@@ -50,80 +50,69 @@ namespace Core.Batch
                 {
                     if (ct.IsCancellationRequested)
                     {
-                        _rhinoCommOut.ShowMessage($"[DEBUG] BatchService canceled due to CancellationToken at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                         break;
                     }
 
-                    _rhinoCommOut.ShowMessage($"[DEBUG] Processing file '{file}' started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                     try
                     {
-                        bool success = await Task.Run(() =>
+                        _rhinoCommOut?.ShowMessage($"[DEBUG] Processing file '{file}' started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+
+                        // Delegate file opening to RhinoBatchServices
+                        bool fileOpened = await _batchServices.OpenFileAsync(file, ct);
+                        if (!fileOpened)
                         {
-                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFile started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
-                            if (!_batchServices.OpenFile(file))
-                            {
-                                _rhinoCommOut.ShowError($"Failed to open {Path.GetFileName(file)}");
-                                return false;
-                            }
-                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFile ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                            _rhinoCommOut?.ShowError($"Failed to open {Path.GetFileName(file)}");
+                            BatchServiceLog.Instance.AddStatus(file, "FAIL");
+                            continue;
+                        }
 
-                            bool scriptResult = false;
-                            _rhinoCommOut.ShowMessage($"[DEBUG] TimeOutManager.RunWithTimeout started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
-                            bool completedWithinTimeout = TimeOutManager.RunWithTimeout(
-                                () =>
-                                {
-                                    scriptResult = isGrasshopper ? _grasshopperServices.RunScript(ct) : _pythonServices.RunScript(ct);
-                                },
-                                TimeOutMin.Instance.Minutes,
-                                ct);
-                            _rhinoCommOut.ShowMessage($"[DEBUG] TimeOutManager.RunWithTimeout ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                        // Delegate script execution to Rhino services
+                        bool scriptResult = await (isGrasshopper ? _grasshopperServices.RunScriptAsync(ct) : _pythonServices.RunScriptAsync(ct));
+                        if (!scriptResult)
+                        {
+                            _rhinoCommOut?.ShowError($"{(isGrasshopper ? "Grasshopper" : "Python")} script failed for {Path.GetFileName(file)}");
+                            BatchServiceLog.Instance.AddStatus(file, "FAIL");
+                        }
+                        else
+                        {
+                            BatchServiceLog.Instance.AddStatus(file, "PASS");
+                        }
 
-                            if (!completedWithinTimeout)
-                            {
-                                _rhinoCommOut.ShowError($"{(isGrasshopper ? "Grasshopper" : "Python")} script timed out for {Path.GetFileName(file)}");
-                                _batchServices.CloseFile();
-                                return false;
-                            }
-
-                            if (!scriptResult)
-                            {
-                                _rhinoCommOut.ShowError($"{(isGrasshopper ? "Grasshopper" : "Python")} script failed for {Path.GetFileName(file)}");
-                            }
-
-                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFile started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
-                            _batchServices.CloseFile();
-                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFile ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
-
-                            return scriptResult;
-                        }, ct);
-
-                        BatchServiceLog.Instance.AddStatus(file, success ? "PASS" : "FAIL");
-                        _rhinoCommOut.ShowMessage($"[DEBUG] Processing file '{file}' ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                        // Delegate file closing to RhinoBatchServices
+                        await _batchServices.CloseFileAsync(ct);
                     }
                     catch (Exception ex)
                     {
-                        _rhinoCommOut.ShowError($"Error processing {Path.GetFileName(file)}: {ex.Message}");
+                        _rhinoCommOut?.ShowError($"Error processing {Path.GetFileName(file)}: {ex.Message} (Stack: {ex.StackTrace})");
                         BatchServiceLog.Instance.AddStatus(file, "FAIL");
-                        _batchServices.CloseFile();
+                        await _batchServices.CloseFileAsync(ct);
                     }
                 }
-                _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.RunBatchAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {
-                _rhinoCommOut.ShowError($"Batch failed: {ex.Message}");
+                _rhinoCommOut?.ShowError($"Batch failed: {ex.Message} (Stack: {ex.StackTrace})");
             }
             finally
             {
-                CloseAllFiles();
+                await _batchServices.CloseAllFilesAsync(ct);
+                _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
         }
 
         public void CloseAllFiles()
         {
-            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.CloseAllFiles started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
-            _batchServices.CloseAllFiles();
-            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.CloseAllFiles ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            try
+            {
+                // Use the synchronous version if needed, but this should ideally be async
+                Task.Run(() => _batchServices.CloseAllFilesAsync(CancellationToken.None)).GetAwaiter().GetResult();
+                _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            }
+            catch (Exception ex)
+            {
+                _rhinoCommOut?.ShowMessage($"Failed to close all files: {ex.Message} (Stack: {ex.StackTrace})");
+            }
         }
     }
 }

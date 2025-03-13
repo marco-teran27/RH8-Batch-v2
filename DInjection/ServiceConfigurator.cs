@@ -29,8 +29,6 @@ namespace DInjection
                     provider.GetService<IRhinoBatchServices>(),
                     provider.GetService<IRhinoPythonServices>(),
                     provider.GetService<IRhinoGrasshopperServices>()));
-            // Removed direct RhinoInt references
-            // Assume IRhinoPythonServices and IRhinoGrasshopperServices are registered elsewhere
             return services;
         }
     }
