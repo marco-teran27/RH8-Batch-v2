@@ -19,7 +19,7 @@ namespace RhinoInt
 
         public async Task<bool> RunScriptAsync(CancellationToken ct)
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoGrasshopperServices.RunScriptAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoGrasshopperServices.RunScriptAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             var tcs = new TaskCompletionSource<bool>();
             try
             {
@@ -41,7 +41,7 @@ namespace RhinoInt
                         {
                             using (var fs = File.Open(scriptPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                             {
-                                _rhinoCommOut?.ShowMessage($"[DEBUG] Successfully verified read access to Grasshopper script: '{scriptPath}'");
+                                //_rhinoCommOut?.ShowMessage($"[DEBUG] Successfully verified read access to Grasshopper script: '{scriptPath}'");
                             }
                         }
                         catch (IOException ex)
@@ -183,7 +183,7 @@ namespace RhinoInt
                     }
                 });
                 await tcs.Task;
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoGrasshopperServices.RunScriptAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoGrasshopperServices.RunScriptAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                 return await tcs.Task;
             }
             catch (Exception ex)

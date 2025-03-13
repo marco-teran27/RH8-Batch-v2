@@ -33,7 +33,7 @@ namespace Core.Batch
 
         public async Task RunBatchAsync(CancellationToken ct)
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 var files = RhinoFileNameList.Instance.GetMatchedFiles();
@@ -55,7 +55,7 @@ namespace Core.Batch
 
                     try
                     {
-                        _rhinoCommOut?.ShowMessage($"[DEBUG] Processing file '{file}' started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                        //_rhinoCommOut?.ShowMessage($"[DEBUG] Processing file '{file}' started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
 
                         // Delegate file opening to RhinoBatchServices
                         bool fileOpened = await _batchServices.OpenFileAsync(file, ct);
@@ -96,18 +96,18 @@ namespace Core.Batch
             finally
             {
                 await _batchServices.CloseAllFilesAsync(ct);
-                _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.RunBatchAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
         }
 
         public void CloseAllFiles()
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 // Use the synchronous version if needed, but this should ideally be async
                 Task.Run(() => _batchServices.CloseAllFilesAsync(CancellationToken.None)).GetAwaiter().GetResult();
-                _rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] BatchService.CloseAllFiles ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {

@@ -16,10 +16,9 @@ namespace RhinoInt
         {
             _rhinoCommOut = rhinoCommOut ?? throw new ArgumentNullException(nameof(rhinoCommOut));
         }
-
         public async Task<bool> OpenFileAsync(string filePath, CancellationToken ct)
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync started for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync started for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             var tcs = new TaskCompletionSource<bool>();
             try
             {
@@ -27,7 +26,7 @@ namespace RhinoInt
                 {
                     try
                     {
-                        _rhinoCommOut?.ShowMessage($"[DEBUG] Entering InvokeOnUiThread for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                        //_rhinoCommOut?.ShowMessage($"[DEBUG] Entering InvokeOnUiThread for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
 
                         // Validate file path
                         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
@@ -49,7 +48,7 @@ namespace RhinoInt
                         {
                             using (var fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
                             {
-                                _rhinoCommOut?.ShowMessage($"[DEBUG] Successfully verified read access to file: '{filePath}'");
+                                //_rhinoCommOut?.ShowMessage($"[DEBUG] Successfully verified read access to file: '{filePath}'");
                             }
                         }
                         catch (IOException ex)
@@ -60,17 +59,20 @@ namespace RhinoInt
                         }
 
                         // Close existing documents
-                        _rhinoCommOut?.ShowMessage("[DEBUG] Closing any existing Rhino documents");
+                        //_rhinoCommOut?.ShowMessage("[DEBUG] Closing any existing Rhino documents");
                         RhinoApp.RunScript("-_New None", true);
                         _currentDoc = null;
 
+                        // Disable redraw early to prevent any viewport updates during file opening
+                        RhinoDoc.ActiveDoc.Views.RedrawEnabled = false;
+
                         // Attempt to open using RhinoDoc.Open
-                        _rhinoCommOut?.ShowMessage($"[DEBUG] Attempting to open file with RhinoDoc.Open: '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                        //_rhinoCommOut?.ShowMessage($"[DEBUG] Attempting to open file with RhinoDoc.Open: '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         _currentDoc = RhinoDoc.Open(filePath, out bool wasAlreadyOpen);
 
                         if (_currentDoc == null || wasAlreadyOpen)
                         {
-                            _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoDoc.Open failed (null or already open), falling back to RunScript for '{filePath}'");
+                            //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoDoc.Open failed (null or already open), falling back to RunScript for '{filePath}'");
                             string openCommand = $"-_Open \"{filePath}\"";
                             RhinoApp.RunScript(openCommand, true);
                             _currentDoc = RhinoDoc.ActiveDoc;
@@ -102,9 +104,21 @@ namespace RhinoInt
                             return;
                         }
 
-                        _rhinoCommOut?.ShowMessage($"[DEBUG] Successfully opened file: '{filePath}' with document name '{_currentDoc.Name}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-                        RhinoDoc.ActiveDoc.Views.Redraw();
-                        RhinoApp.Wait();
+                        // Hide all objects in the document to ensure nothing is visible in the viewport
+                        foreach (var obj in _currentDoc.Objects)
+                        {
+                            obj.Attributes.Visible = false;
+                            obj.CommitChanges();
+                        }
+
+                        // Ensure the document is not marked as modified to prevent saving
+                        _currentDoc.Modified = false;
+
+                        // Remove or comment out Redraw and Wait calls to prevent UI updates
+                        // RhinoDoc.ActiveDoc.Views.Redraw();
+                        // RhinoApp.Wait();
+
+                        //_rhinoCommOut?.ShowMessage($"[DEBUG] Successfully opened file: '{filePath}' with document name '{_currentDoc.Name}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                         tcs.SetResult(true);
                     }
                     catch (Exception ex)
@@ -113,30 +127,35 @@ namespace RhinoInt
                         _currentDoc = null;
                         tcs.SetResult(false);
                     }
+                    finally
+                    {
+                        // Optionally re-enable redraw if needed for other operations
+                        // RhinoDoc.ActiveDoc.Views.RedrawEnabled = true;
+                    }
                 });
 
                 bool openSuccess = await tcs.Task;
                 if (!openSuccess)
                 {
-                    _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync failed for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                    //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync failed for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                     return false;
                 }
 
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync ended for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId} with result: True");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync ended for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId} with result: True");
                 return true;
             }
             catch (Exception ex)
             {
                 _rhinoCommOut?.ShowMessage($"Failed to open {filePath}: {ex.Message} (Stack: {ex.StackTrace})");
                 _currentDoc = null;
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync failed for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFileAsync failed for '{filePath}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                 return false;
             }
         }
 
         public async Task CloseFileAsync(CancellationToken ct)
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             var tcs = new TaskCompletionSource<bool>();
             try
             {
@@ -160,19 +179,19 @@ namespace RhinoInt
                     }
                 });
                 await tcs.Task;
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {
                 _rhinoCommOut?.ShowMessage($"Failed to close file (outer exception): {ex.Message} (Stack: {ex.StackTrace})");
                 _currentDoc = null;
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync failed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFileAsync failed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
         }
 
         public async Task CloseAllFilesAsync(CancellationToken ct)
         {
-            _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             var tcs = new TaskCompletionSource<bool>();
             try
             {
@@ -190,12 +209,12 @@ namespace RhinoInt
                     }
                 });
                 await tcs.Task;
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {
                 _rhinoCommOut?.ShowMessage($"Failed to close all files (outer exception): {ex.Message} (Stack: {ex.StackTrace})");
-                _rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync failed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //_rhinoCommOut?.ShowMessage($"[DEBUG] RhinoBatchServices.CloseAllFilesAsync failed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
         }
     }

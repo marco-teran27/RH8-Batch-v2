@@ -42,7 +42,7 @@ namespace RhinoInt
         {
             try
             {
-                RhinoApp.WriteLine($"[DEBUG] BatchProcessorStart.RunCommand started on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                //RhinoApp.WriteLine($"[DEBUG] BatchProcessorStart.RunCommand started on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
 
                 // Run the async operation and wait without deadlocking
                 var task = Task.Run(() => RunBatchAsync(doc, mode));
@@ -53,7 +53,7 @@ namespace RhinoInt
                 }
                 bool success = task.Result;
 
-                RhinoApp.WriteLine($"[DEBUG] BatchProcessorStart.RunCommand ended with success: {success} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                //RhinoApp.WriteLine($"[DEBUG] BatchProcessorStart.RunCommand ended with success: {success} on Thread {Thread.CurrentThread.ManagedThreadId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                 return success ? Result.Success : Result.Failure;
             }
             catch (Exception ex)

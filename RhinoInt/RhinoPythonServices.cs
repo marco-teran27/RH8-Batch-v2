@@ -13,7 +13,7 @@ namespace RhinoInt
     {
         public async Task<bool> RunScriptAsync(CancellationToken ct)
         {
-            RhinoApp.WriteLine($"[DEBUG] RhinoPythonServices.RunScriptAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+            //RhinoApp.WriteLine($"[DEBUG] RhinoPythonServices.RunScriptAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             var tcs = new TaskCompletionSource<bool>();
             try
             {
@@ -40,7 +40,7 @@ namespace RhinoInt
                         {
                             using (var fs = File.Open(scriptPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                             {
-                                RhinoApp.WriteLine($"[DEBUG] Successfully verified read access to Python script: '{scriptPath}'");
+                                //RhinoApp.WriteLine($"[DEBUG] Successfully verified read access to Python script: '{scriptPath}'");
                             }
                         }
                         catch (IOException ex)
@@ -74,7 +74,7 @@ namespace RhinoInt
                     }
                 });
                 await tcs.Task;
-                RhinoApp.WriteLine($"[DEBUG] RhinoPythonServices.RunScriptAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+                //RhinoApp.WriteLine($"[DEBUG] RhinoPythonServices.RunScriptAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {
