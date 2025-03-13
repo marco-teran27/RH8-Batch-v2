@@ -12,6 +12,7 @@ namespace RhinoInt
     {
         public bool RunScript(CancellationToken ct)
         {
+            RhinoApp.WriteLine($"[DEBUG] RhinoGrasshopperServices.RunScript started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
             GH_Document doc = null;
             try
             {
@@ -25,7 +26,7 @@ namespace RhinoInt
 
                 RhinoApp.WriteLine($"Opening Grasshopper script: {scriptPath}");
 
-                // Open the Grasshopper document
+                RhinoApp.WriteLine($"[DEBUG] GH_DocumentIO.Open started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                 var io = new GH_DocumentIO();
                 if (!io.Open(scriptPath))
                 {
@@ -33,6 +34,7 @@ namespace RhinoInt
                     SignalCompletionToManager(false);
                     return false;
                 }
+                RhinoApp.WriteLine($"[DEBUG] GH_DocumentIO.Open ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
 
                 doc = io.Document;
                 if (doc == null)
@@ -42,45 +44,47 @@ namespace RhinoInt
                     return false;
                 }
 
-                // Set ScriptDone to false before running (optional, for scripts that use it)
+                RhinoApp.WriteLine($"[DEBUG] Setting ScriptDone flag at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                 RhinoDoc.ActiveDoc?.Strings.SetString("ScriptDone", "false");
 
-                // Add the document to Grasshopper's DocumentServer
+                RhinoApp.WriteLine($"[DEBUG] DocumentServer.AddDocument started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                 Grasshopper.Instances.DocumentServer.AddDocument(doc);
+                RhinoApp.WriteLine($"[DEBUG] DocumentServer.AddDocument ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
 
-                // Hook up solution end event to track solution cycles
                 bool solutionHasEnded = false;
                 DateTime? lastSolutionEndTime = null;
-                TimeSpan stabilizationPeriod = TimeSpan.FromSeconds(5); // Wait 5 seconds for stabilization
+                TimeSpan stabilizationPeriod = TimeSpan.FromSeconds(5);
 
                 doc.SolutionEnd += (sender, e) =>
                 {
                     solutionHasEnded = true;
                     lastSolutionEndTime = DateTime.Now;
-                    RhinoApp.WriteLine("GH solution cycle has completed.");
+                    RhinoApp.WriteLine($"[DEBUG] SolutionEnd event triggered at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                 };
 
-                // Run the Grasshopper solution synchronously
-                RhinoApp.WriteLine("Starting Grasshopper solution...");
+                RhinoApp.WriteLine($"[DEBUG] GH_Document.NewSolution started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                 doc.Enabled = true;
                 doc.NewSolution(true); // True forces a full recalculation
+                RhinoApp.WriteLine($"[DEBUG] GH_Document.NewSolution ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
 
-                // Add a safety timeout to prevent infinite loops
                 DateTime startTime = DateTime.Now;
-                TimeSpan maxWaitTime = TimeSpan.FromSeconds(60); // Maximum 60 seconds for safety
+                TimeSpan maxWaitTime = TimeSpan.FromSeconds(60);
 
-                // Wait for solution completion, stabilization, or cancellation
+                int loopIteration = 0;
                 while (!ct.IsCancellationRequested && DateTime.Now - startTime < maxWaitTime)
                 {
-                    // Check for explicit completion signal first (optional, for scripts that use it)
+                    loopIteration++;
+                    RhinoApp.WriteLine($"[DEBUG] Loop iteration {loopIteration} at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}, Time elapsed: {(DateTime.Now - startTime).TotalSeconds:F3}s");
+
                     string scriptDone = RhinoDoc.ActiveDoc?.Strings.GetValue("ScriptDone") ?? "false";
                     if (scriptDone == "true")
                     {
-                        RhinoApp.WriteLine("Script completion confirmed: ScriptDone flag is true");
+                        RhinoApp.WriteLine($"Script completion confirmed: ScriptDone flag is true");
                         SignalCompletionToManager(true);
                         return true;
                     }
 
+                    RhinoApp.WriteLine($"[DEBUG] CheckCompletionMarker started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                     bool markerFound = false;
                     try
                     {
@@ -90,18 +94,21 @@ namespace RhinoInt
                     {
                         RhinoApp.WriteLine($"Error checking for completion marker: {ex.Message}");
                     }
+                    RhinoApp.WriteLine($"[DEBUG] CheckCompletionMarker ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
 
                     if (markerFound)
                     {
-                        RhinoApp.WriteLine("Script completion confirmed via file marker");
+                        RhinoApp.WriteLine($"Script completion confirmed via file marker");
                         SignalCompletionToManager(true);
                         return true;
                     }
 
-                    // Check if the solution is idle
-                    if (IsSolutionIdle(doc))
+                    RhinoApp.WriteLine($"[DEBUG] IsSolutionIdle check started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
+                    bool isIdle = IsSolutionIdle(doc);
+                    RhinoApp.WriteLine($"[DEBUG] IsSolutionIdle check ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}, IsIdle: {isIdle}");
+
+                    if (isIdle)
                     {
-                        // If a solution has ended, check if it has stabilized
                         if (solutionHasEnded && lastSolutionEndTime.HasValue)
                         {
                             TimeSpan timeSinceLastSolution = DateTime.Now - lastSolutionEndTime.Value;
@@ -118,56 +125,40 @@ namespace RhinoInt
                         }
                         else if (!solutionHasEnded)
                         {
-                            // Solution is idle but hasn't ended, likely an error or empty script
-                            RhinoApp.WriteLine("Warning: Solution is idle but no solution cycle has ended. Treating as complete.");
+                            RhinoApp.WriteLine($"Warning: Solution is idle but no solution cycle has ended. Treating as complete.");
                             SignalCompletionToManager(true);
                             return true;
                         }
                     }
                     else
                     {
-                        // Solution is still running, reset stabilization timer if a new solution starts
-                        RhinoApp.WriteLine("Solution is still running...");
-                        lastSolutionEndTime = null; // Reset timer if a new solution starts
+                        RhinoApp.WriteLine($"Solution is still running...");
+                        lastSolutionEndTime = null;
                     }
 
-                    // Optional: Use SolutionProgress for more detailed monitoring (commented out)
-                    /*
-                    if (doc.SolutionProgress(out GH_ProcessStep step) >= 0)
-                    {
-                        RhinoApp.WriteLine($"Solution progress: {doc.SolutionProgress(out step):F2}, Step: {step}");
-                        if (step == GH_ProcessStep.PostProcess && doc.SolutionProgress(out step) == 1.0)
-                        {
-                            RhinoApp.WriteLine("Solution has just completed (PostProcess with progress 1.0)");
-                        }
-                    }
-                    */
-
-                    // Sleep briefly to avoid busy-waiting
                     try
                     {
                         Thread.Sleep(100);
                     }
                     catch (OperationCanceledException)
                     {
-                        RhinoApp.WriteLine("Sleep canceled due to cancellation request.");
+                        RhinoApp.WriteLine($"Sleep canceled due to cancellation request.");
                         break;
                     }
                 }
 
-                // Handle the different exit conditions
                 if (ct.IsCancellationRequested)
                 {
-                    RhinoApp.WriteLine("Grasshopper script execution cancelled.");
-                    doc.Enabled = false; // Stop any ongoing solutions
+                    RhinoApp.WriteLine($"Grasshopper script execution cancelled.");
+                    doc.Enabled = false;
                     SignalCompletionToManager(false);
                     return false;
                 }
 
                 if (DateTime.Now - startTime >= maxWaitTime)
                 {
-                    RhinoApp.WriteLine("Grasshopper script execution timed out after safety timeout.");
-                    doc.Enabled = false; // Stop any ongoing solutions
+                    RhinoApp.WriteLine($"Grasshopper script execution timed out after safety timeout.");
+                    doc.Enabled = false;
                     SignalCompletionToManager(false);
                     return false;
                 }
@@ -177,44 +168,47 @@ namespace RhinoInt
             }
             catch (OperationCanceledException)
             {
-                RhinoApp.WriteLine("Grasshopper script execution was cancelled.");
+                RhinoApp.WriteLine($"Grasshopper script execution was cancelled.");
                 SignalCompletionToManager(false);
                 return false;
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"Grasshopper script execution error at {DateTime.Now}: {ex.Message}");
+                RhinoApp.WriteLine($"Grasshopper script execution error at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}: {ex.Message}");
                 SignalCompletionToManager(false);
                 return false;
             }
             finally
             {
-                // Cleanup regardless of success or failure
                 try
                 {
                     if (doc != null)
                     {
-                        RhinoApp.WriteLine("Cleaning up Grasshopper document...");
-                        doc.Enabled = false; // Stop any ongoing solutions
+                        RhinoApp.WriteLine($"Cleaning up Grasshopper document...");
+                        doc.Enabled = false;
                         if (Grasshopper.Instances.DocumentServer.Contains(doc))
                         {
+                            RhinoApp.WriteLine($"[DEBUG] DocumentServer.RemoveDocument started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                             Grasshopper.Instances.DocumentServer.RemoveDocument(doc);
-                            RhinoApp.WriteLine("Grasshopper document removed from DocumentServer.");
+                            RhinoApp.WriteLine($"[DEBUG] DocumentServer.RemoveDocument ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
+                            RhinoApp.WriteLine($"Grasshopper document removed from DocumentServer.");
                         }
+                        RhinoApp.WriteLine($"[DEBUG] GH_Document.Dispose started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
                         doc.Dispose();
-                        RhinoApp.WriteLine("Grasshopper document disposed.");
+                        RhinoApp.WriteLine($"[DEBUG] GH_Document.Dispose ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
+                        RhinoApp.WriteLine($"Grasshopper document disposed.");
                     }
                 }
                 catch (Exception ex)
                 {
                     RhinoApp.WriteLine($"Warning: Error during GH document cleanup: {ex.Message}");
                 }
+                RhinoApp.WriteLine($"[DEBUG] RhinoGrasshopperServices.RunScript ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
             }
         }
 
         private bool IsSolutionIdle(GH_Document doc)
         {
-            // Use GH_ProcessStep instead of GH_SolutionState for SolutionState
             return doc.SolutionState == GH_ProcessStep.PostProcess && doc.SolutionDepth == 0;
         }
 
@@ -235,6 +229,7 @@ namespace RhinoInt
 
         private void SignalCompletionToManager(bool success)
         {
+            RhinoApp.WriteLine($"[DEBUG] SignalCompletionToManager started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
             string managerMarkerDir = Path.Combine(Path.GetTempPath(), "RhinoGHBatch");
             string managerMarkerFile = Path.Combine(managerMarkerDir, $"{RhinoDoc.ActiveDoc?.Name ?? "unknown"}_manager_complete.marker");
             try
@@ -246,6 +241,7 @@ namespace RhinoInt
             {
                 RhinoApp.WriteLine($"Warning: Failed to signal completion to manager: {ex.Message}");
             }
+            RhinoApp.WriteLine($"[DEBUG] SignalCompletionToManager ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}, State: {Thread.CurrentThread.ThreadState}");
         }
     }
 }

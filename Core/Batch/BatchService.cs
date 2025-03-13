@@ -33,6 +33,7 @@ namespace Core.Batch
 
         public async Task RunBatchAsync(CancellationToken ct)
         {
+            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.RunBatchAsync started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             try
             {
                 var files = RhinoFileNameList.Instance.GetMatchedFiles();
@@ -49,20 +50,25 @@ namespace Core.Batch
                 {
                     if (ct.IsCancellationRequested)
                     {
+                        _rhinoCommOut.ShowMessage($"[DEBUG] BatchService canceled due to CancellationToken at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                         break;
                     }
 
+                    _rhinoCommOut.ShowMessage($"[DEBUG] Processing file '{file}' started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                     try
                     {
                         bool success = await Task.Run(() =>
                         {
+                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFile started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                             if (!_batchServices.OpenFile(file))
                             {
                                 _rhinoCommOut.ShowError($"Failed to open {Path.GetFileName(file)}");
                                 return false;
                             }
+                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.OpenFile ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
 
                             bool scriptResult = false;
+                            _rhinoCommOut.ShowMessage($"[DEBUG] TimeOutManager.RunWithTimeout started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                             bool completedWithinTimeout = TimeOutManager.RunWithTimeout(
                                 () =>
                                 {
@@ -70,6 +76,7 @@ namespace Core.Batch
                                 },
                                 TimeOutMin.Instance.Minutes,
                                 ct);
+                            _rhinoCommOut.ShowMessage($"[DEBUG] TimeOutManager.RunWithTimeout ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
 
                             if (!completedWithinTimeout)
                             {
@@ -83,11 +90,15 @@ namespace Core.Batch
                                 _rhinoCommOut.ShowError($"{(isGrasshopper ? "Grasshopper" : "Python")} script failed for {Path.GetFileName(file)}");
                             }
 
+                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFile started for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                             _batchServices.CloseFile();
+                            _rhinoCommOut.ShowMessage($"[DEBUG] RhinoBatchServices.CloseFile ended for '{file}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+
                             return scriptResult;
                         }, ct);
 
                         BatchServiceLog.Instance.AddStatus(file, success ? "PASS" : "FAIL");
+                        _rhinoCommOut.ShowMessage($"[DEBUG] Processing file '{file}' ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                     }
                     catch (Exception ex)
                     {
@@ -96,6 +107,7 @@ namespace Core.Batch
                         _batchServices.CloseFile();
                     }
                 }
+                _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.RunBatchAsync ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             }
             catch (Exception ex)
             {
@@ -109,7 +121,9 @@ namespace Core.Batch
 
         public void CloseAllFiles()
         {
+            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.CloseAllFiles started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             _batchServices.CloseAllFiles();
+            _rhinoCommOut.ShowMessage($"[DEBUG] BatchService.CloseAllFiles ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
         }
     }
 }

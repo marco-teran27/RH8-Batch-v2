@@ -18,11 +18,13 @@ namespace Config
 
         public string SelectConfigFile()
         {
+            _rhinoCommOut.ShowMessage($"[DEBUG] ConfigSelUI.SelectConfigFile started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             string configPath = null;
             Exception dialogException = null;
 
             Thread staThread = new Thread(() =>
             {
+                _rhinoCommOut.ShowMessage($"[DEBUG] WinForms OpenFileDialog initialization started at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                 try
                 {
                     using OpenFileDialog openFileDialog = new OpenFileDialog()
@@ -35,7 +37,10 @@ namespace Config
                         Title = "Select Config File"
                     };
 
+                    _rhinoCommOut.ShowMessage($"[DEBUG] WinForms OpenFileDialog initialized at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                     DialogResult result = openFileDialog.ShowDialog();
+                    _rhinoCommOut.ShowMessage($"[DEBUG] WinForms OpenFileDialog completed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
+
                     if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(openFileDialog.FileName))
                     {
                         configPath = openFileDialog.FileName;
@@ -58,8 +63,12 @@ namespace Config
             staThread.Join();
 
             if (dialogException != null)
+            {
+                _rhinoCommOut.ShowMessage($"[DEBUG] ConfigSelUI.SelectConfigFile failed at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
                 return null;
+            }
 
+            _rhinoCommOut.ShowMessage($"[DEBUG] ConfigSelUI.SelectConfigFile ended at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} on Thread {Thread.CurrentThread.ManagedThreadId}");
             return configPath;
         }
     }
