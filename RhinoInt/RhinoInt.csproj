@@ -16,6 +16,7 @@
 
 	<PropertyGroup>
 		<!-- Specifies information for Assembly and Yak -->
+		<AssemblyName>BatchProcessor</AssemblyName>
 		<Version>1.0.0</Version>
 		<Title>BatchProcessor</Title>
 		<Company>TomiDoki Authors</Company>
