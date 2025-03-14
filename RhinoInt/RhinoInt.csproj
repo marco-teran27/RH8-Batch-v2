@@ -24,6 +24,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<None Update="manifest.yml" CopyToOutputDirectory="PreserveNewest" />
+		<None Update="README.md" CopyToOutputDirectory="PreserveNewest" Condition="Exists('README.md')" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="EmbeddedResources\plugin-utility.ico" />
+	</ItemGroup>
+	
+	<ItemGroup>
 		<PackageReference Include="Grasshopper" Version="8.17.25066.7001" />
 		<PackageReference Include="RhinoCommon" Version="8.17.25066.7001" ExcludeAssets="runtime" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
@@ -45,26 +54,27 @@
 		<ProjectReference Include="..\Interfaces\Interfaces.csproj" />
 		<ProjectReference Include="..\DInjection\DInjection.csproj" />
 	</ItemGroup>
-
+	
 	<Target Name="BuildYakPackage" AfterTargets="DispatchToInnerBuilds">
 		<PropertyGroup>
-			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(windows)) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
-			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform(macos)) and Exists('/Applications/Rhino 8.app/Contents/Resources/bin/yak')">/Applications/Rhino 8.app/Contents/Resources/bin/yak</YakExecutable>
+			<!-- Dynamically determine the Yak executable path based on Rhino installation -->
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform('Windows')) and Exists('C:\Program Files\Rhino 8\System\Yak.exe')">C:\Program Files\Rhino 8\System\Yak.exe</YakExecutable>
+			<YakExecutable Condition="$(YakExecutable) == '' and $([MSBuild]::IsOSPlatform('Windows')) and Exists('$(APPDATA)\McNeel\Rhinoceros\8.0\System\Yak.exe')">$(APPDATA)\McNeel\Rhinoceros\8.0\System\Yak.exe</YakExecutable>
 
-			<BuildYakPackage Condition="$(BuildYakPackage) == '' and $(YakExecutable) != '' and Exists($(YakExecutable))">True</BuildYakPackage>
+			<!-- Enable Yak package build only if the executable is found -->
+			<BuildYakPackage Condition="$(BuildYakPackage) == '' and '$(YakExecutable)' != '' and Exists('$(YakExecutable)')">True</BuildYakPackage>
 		</PropertyGroup>
 
-		<Warning Text="Could not find Yak executable" Condition="$(YakExecutable) == ''" />
+		<Warning Text="Could not find Yak executable at '$(YakExecutable)'. Skipping Yak package build." Condition="'$(BuildYakPackage)' != 'True'" />
 
 		<ItemGroup>
 			<YakPackagesToDelete Include="$(OutputPath)\*.yak;$(OutputPath)\**\manifest.yml" />
 		</ItemGroup>
 
-		<Delete Files="@(YakPackagesToDelete)" />
+		<Delete Files="@(YakPackagesToDelete)" Condition="'$(BuildYakPackage)' == 'True'" />
 
-		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
-		<Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" Condition="$(BuildYakPackage) == 'True'" />
-
+		<Exec Command="&quot;$(YakExecutable)&quot; spec" WorkingDirectory="$(OutputPath)" Condition="'$(BuildYakPackage)' == 'True'" />
+		<Exec Command="&quot;$(YakExecutable)&quot; build" WorkingDirectory="$(OutputPath)" Condition="'$(BuildYakPackage)' == 'True'" />
 	</Target>
 
 </Project>

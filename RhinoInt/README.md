@@ -21,19 +21,29 @@ RH8-Batch-v2 is a Rhino 8 plugin for batch processing of 3D model files (.3dm) w
 
 ## Installation
 
-1. Download the latest release from the [Releases](https://github.com/yourusername/RH8-Batch-v2/releases) page
-2. Extract the ZIP file to a location of your choice
-3. In Rhino 8, run the command `_PlugInManager`
-4. Click "Install..." and navigate to the extracted folder
-5. Select the `RhinoInt.rhp` file
-6. Restart Rhino
+This is an internal tool that requires installation using Rhino's package manager (Yak) through the command line.
 
-Alternatively, you can build from source:
+### Using Yak Package Manager
 
-1. Clone the repository: `git clone https://github.com/yourusername/RH8-Batch-v2.git`
+1. Build the project from source to generate the `.yak` package
+2. Open Command Prompt (CMD) as Administrator
+3. Navigate to the Rhino 8 System directory:
+   ```
+   cd C:\Program Files\Rhino 8\System
+   ```
+4. Install the package using yak.exe:
+   ```
+   yak.exe install C:\path\to\build\output\batchprocessor-1.0.0.yak
+   ```
+5. Restart Rhino 8
+
+### Building from Source
+
+1. Clone the internal repository (requires access rights)
 2. Open the solution in Visual Studio 2022
-3. Build the solution
-4. Copy the output files to your Rhino plugins folder
+3. Build the solution in Release mode
+4. The build process will automatically create a `.yak` package in the output directory
+5. Use the Yak commands above to install the generated package
 
 ## Usage
 
@@ -58,7 +68,7 @@ Configuration files should be named according to the pattern `config-[ProjectNam
   },
   "script_settings": {
     "script_name": "MyScript",
-    "script_type": "Python"  // Options: "Python", "Grasshopper", "GH", "gh", "PY", "py"
+    "script_type": "Python"  // Options: "Python", "Grasshopper", "GrasshopperXml", "PY", "py", "GH", "gh"
   },
   "rhino_file_name_settings": {
     "mode": "list",  // Options: "list", "all"
@@ -77,6 +87,15 @@ Configuration files should be named according to the pattern `config-[ProjectNam
   }
 }
 ```
+
+Description of config file parameters
+1. Project Name - this variable matches the "projectName" in the config file name
+2. Directories are the file paths for each needed directory. file_dir is the location of the Rhino files to parse
+3. Rhino File Name Settings.Mode = List: each of the keywords will be used to match rhino file names in file_dir; Mode = All: keywords are bypassed for matching
+4. PID Settings.Mode = List: each of the PIDs is used for matchingl Mode = All: PIDs are bypassed during matching rhino file names in file_dir
+5. PID Settings.pids: The correct format is patient ID + L/R - Sales or RMA number
+6. TimeOut Settings.Minutes: Variable in postiive minutes, its a catch for frozen scripts. If the script has not completed by the alloted time, BatchProcessor will stop and move onto the next rhino file
+7. Reproces Settings: Not in use in BatchProcessor v1.0.0
 
 ### Patient ID Format
 
