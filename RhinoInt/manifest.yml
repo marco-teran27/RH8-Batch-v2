@@ -1,5 +1,5 @@
 ﻿    name: BatchProcessor
-    version: 2.0.1
+    version: 2.0.2
     description: Batch processes Rhino files with script by Patient IDs
     author: TomiDoki
     keywords: [batch, automation, rhino]
