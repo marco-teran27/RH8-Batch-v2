@@ -17,7 +17,7 @@
 	<PropertyGroup>
 		<!-- Specifies information for Assembly and Yak -->
 		<AssemblyName>BatchProcessor</AssemblyName>
-		<Version>1.0.0</Version>
+		<Version>2.0.1</Version>
 		<Title>BatchProcessor</Title>
 		<Company>TomiDoki Authors</Company>
 		<Description>Processes rhino file(s), with GH/Py scipts, based on patient IDs | version 1.0</Description>

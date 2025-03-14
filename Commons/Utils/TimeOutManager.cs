@@ -1,5 +1,4 @@
-﻿/// This updates the entire TimeOutManager class in Commons\Utils\TimeOutManager.cs
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,35 +6,37 @@ namespace Commons.Utils
 {
     public static class TimeOutManager
     {
-        public static bool RunWithTimeout(Action action, int timeOutMinutes, CancellationToken ct)
+        public static async Task<bool> RunWithTimeoutAsync(Func<CancellationToken, Task> actionAsync, int timeOutMinutes, CancellationToken externalCt)
         {
             var timeoutMs = timeOutMinutes * 60 * 1000;
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
             cts.CancelAfter(timeoutMs);
 
             try
             {
-                Task task = Task.Run(() =>
-                {
-                    action();
-                }, cts.Token);
+                var task = Task.Run(() => actionAsync(cts.Token), cts.Token);
+                var delayTask = Task.Delay(timeoutMs, cts.Token);
 
-                task.Wait(cts.Token); // Sync wait, offloads to thread pool
-                return true;
+                var completedTask = await Task.WhenAny(task, delayTask);
+                if (completedTask == task)
+                {
+                    await task; // Ensure exceptions propagate
+                    return true; // Completed within timeout
+                }
+                else
+                {
+                    cts.Cancel(); // Signal cancellation
+                    return false; // Timed out
+                }
             }
             catch (OperationCanceledException)
             {
-                return false; // Timed out
+                return false; // Timed out or canceled
             }
             catch (Exception)
             {
-                throw; // Other errors propagate
-            }
-            finally
-            {
-                cts.Dispose();
+                throw; // Propagate other errors
             }
         }
     }
 }
-/// End of update for the entire TimeOutManager class in Commons\Utils\TimeOutManager.cs

@@ -131,7 +131,7 @@ The solution is organized into several projects:
 
 - Visual Studio 2022
 - .NET 7.0 SDK
-- Rhino 8 WIP
+- Rhino 8
 
 ### Building
 
@@ -153,9 +153,16 @@ The solution is organized into several projects:
 Python scripts should set a document string variable when complete:
 
 ```python
-import scriptcontext
-# Your code here
-scriptcontext.doc.Strings.SetString('ScriptDone', 'true')
+import Rhino
+import os
+
+# Your script logic here
+Rhino.RhinoApp.WriteLine("Hello World")  # Example action
+
+# Optional completion notifier (include this for explicit confirmation)
+marker_file = os.path.join(os.getenv("TEMP"), "python_complete.marker")
+with open(marker_file, "w") as f:
+    f.write("done")
 ```
 
 ### Grasshopper Scripts
