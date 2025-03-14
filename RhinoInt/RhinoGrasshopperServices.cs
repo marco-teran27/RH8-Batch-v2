@@ -64,15 +64,32 @@ namespace RhinoInt
 
                     Grasshopper.Instances.DocumentServer.AddDocument(doc);
                     doc.Enabled = true;
+
+                    _rhinoCommOut?.ShowMessage($"[DEBUG] Starting NewSolution for '{Path.GetFileName(scriptPath)}' on document '{RhinoDoc.ActiveDoc?.Name}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
                     doc.NewSolution(true);
+                    _rhinoCommOut?.ShowMessage($"[DEBUG] NewSolution completed for '{Path.GetFileName(scriptPath)}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
 
                     DateTime startTime = DateTime.Now;
                     TimeSpan maxWaitTime = TimeSpan.FromSeconds(60);
 
                     while (!ct.IsCancellationRequested && DateTime.Now - startTime < maxWaitTime)
                     {
+                        // Option 2: Check for marker file
+                        string markerFile = Path.Combine(Path.GetTempPath(), "RhinoGHBatch", $"{RhinoDoc.ActiveDoc?.Name}_complete.marker");
+                        if (File.Exists(markerFile))
+                        {
+                            _rhinoCommOut?.ShowMessage($"[DEBUG] Marker file found: '{markerFile}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                            File.Delete(markerFile); // Clean up the marker file
+                            CleanupDocument(doc);   // Clean up immediately
+                            tcs.SetResult(true);
+                            return;
+                        }
+
+                        // Option 3: Check for idle state and clean up on success
                         if (IsSolutionIdle(doc))
                         {
+                            _rhinoCommOut?.ShowMessage($"[DEBUG] Solution idle detected for '{Path.GetFileName(scriptPath)}' at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                            CleanupDocument(doc);   // Clean up on success
                             tcs.SetResult(true);
                             return;
                         }
